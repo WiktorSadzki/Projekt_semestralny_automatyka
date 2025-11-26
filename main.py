@@ -1,6 +1,6 @@
 import numpy as np
 import plotly.express as px
-from dash import Dash, html, dcc, callback, Output, Input
+from dash import Dash, html, dcc, callback, Output, Input, State
 from parameters import Parameters
 from controller import Controller
 
@@ -130,6 +130,12 @@ def main():
         ], style={'padding': '20px', 'border': '1px solid #ccc', 'borderRadius': '5px', 'marginBottom': '20px',
                   'backgroundColor': 'white'}),
 
+        # Przycisk aktualizacji
+        html.Div(
+            html.Button("Aktualizuj wykres", id='button'),
+            style={'textAlign': 'center'}
+        ),
+
         # Sekcja wykresu
         dcc.Graph(id='graph'),
 
@@ -145,14 +151,17 @@ def main():
         Output('label-C', 'children'),
         Output('label-h', 'children'),
         Output('label-Q_load', 'children'),
-        Input('setpoint', 'value'),
-        Input('input-C', 'value'),
-        Input('input-h', 'value'),
-        Input('input-Q_load', 'value'),
-        Input('input-Q_weight', 'value'),
-        Input('input-R_weight', 'value')
+
+        Input('button', 'n_clicks'),
+
+        State('setpoint', 'value'),
+        State('input-C', 'value'),
+        State('input-h', 'value'),
+        State('input-Q_load', 'value'),
+        State('input-Q_weight', 'value'),
+        State('input-R_weight', 'value')
     )
-    def update_output(setpoint, C_new, h_new, Q_load_new, Q_w_new, R_w_new):
+    def update_output(n_clicks, setpoint, C_new, h_new, Q_load_new, Q_w_new, R_w_new):
         C_label = f"Pojemność cieplna C [J/K]: {C_new}"
         h_label = f"Współczynnik konwekcji h [W/(m²K)]: {h_new:.2f}"
         Q_load_label = f"Moc cieplna CPU Q_load [W]: {Q_load_new}"
