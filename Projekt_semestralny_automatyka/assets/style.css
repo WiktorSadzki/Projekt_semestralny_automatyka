@@ -1,0 +1,50 @@
+body{
+    margin: 0;
+    color: white;
+    font-family: Tahoma ;
+}
+
+.main{
+    background-color: #FCF9EA;
+    padding: 1%;
+    margin: 0 auto;
+}
+
+.parameters{
+    background-color: #A8BBA3;
+    color: white;
+
+    font-weight: 600;
+
+    border: 3px solid #ccc;
+    border-radius: 15px;
+
+    text-align: center;
+    width: 80%;
+    padding: 1%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 20px
+}
+
+.parameters-dropdown{
+    color: black;
+    width: 50%;
+    margin: auto;
+}
+
+button{
+    color: white;
+    background-color: #97A87A;
+
+    border: 1px solid white;
+    border-radius: 15px;
+
+    width: 10%;
+
+    cursor: pointer;
+}
+
+.graphs{
+    background-color: #84946A;
+}
