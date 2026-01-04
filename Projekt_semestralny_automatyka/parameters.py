@@ -47,12 +47,12 @@ class Parameters:
         self.V_rad_CPU = 1.5e-4      # objętość radiatora CPU [m³]
         self.V_rad_GPU = 2.0e-4      # objętość radiatora GPU [m³]
         self.A_CPU = 0.25             # powierzchnia wymiany ciepła CPU [m²]
-        self.A_GPU = 0.22             # powierzchnia wymiany ciepła GPU [m²]
-        self.V_enclosure = 0.08       # objętość powietrza w obudowie [m³]
-        self.A_enclosure = 0.5        # powierzchnia wymiany ciepła obudowy [m²]
+        self.A_GPU = 0.20             # powierzchnia wymiany ciepła GPU [m²]
+        self.V_enclosure = 0.045       # objętość powietrza w obudowie [m³]
+        self.A_enclosure = 0.12        # powierzchnia wymiany ciepła obudowy [m²]
         self.epsilon_CPU = 0.85       # emisyjność radiatora CPU
         self.epsilon_GPU = 0.85       # emisyjność radiatora GPU
-        self.epsilon_enclosure = 0.9  # emisyjność obudowy
+        self.epsilon_enclosure = 0.6  # emisyjność obudowy
 
         # Przepływy maksymalne (CFM lub objętość w m³/s) 
         self.V_flow_max_CPU = 0.05    # maksymalny przepływ powietrza przez radiator CPU
@@ -81,9 +81,6 @@ class Parameters:
         self.update_coolant("Powietrze")
         self.set_operation_mode("Standard")
 
-        # Dodatkowe parametry MPC (eksperymentalne)
-        self.leak_factor = 0.1 # 10% ciepła "wycieka" do obudowy
-
     # Tryby pracy: wagi w funkcji kosztu 
     def set_operation_mode(self, mode: str):
         if mode == "Cicha praca":
@@ -102,11 +99,11 @@ class Parameters:
             self.w_smooth = 0.1
         else:  # Standard
             self.T_margin = 8.0
-            self.n_margin = 0.7
-            self.w_thermal = 200.0
+            self.n_margin = 0.8
+            self.w_thermal = 300.0
             self.w_energy = 0.1
             self.w_noise = 5.0
-            self.w_smooth = 5.0
+            self.w_smooth = 10.0
 
     # Aktualizacja materiałów radiatorów 
     def update_heatsink_material(self, cpu_material: str, gpu_material: str):

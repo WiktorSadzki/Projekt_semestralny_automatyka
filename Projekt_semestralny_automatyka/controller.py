@@ -21,14 +21,20 @@ class Controller:
 
     def predict(self, T, u, Qc, Qg):
         T_CPU, T_GPU, T_AIR = T
-        u_CPU, u_GPU, _ = u
+        u_CPU, u_GPU, u_CASE = u
         p = self.p
+
+        print(f"Initial Temperatures: CPU={T_CPU}, GPU={T_GPU}, AIR={T_AIR}")
+        print(f"Qc: {Qc}, Qg: {Qg}")
 
         v_CPU = p.v_min + (p.v_max - p.v_min) * u_CPU / 100
         v_GPU = p.v_min + (p.v_max - p.v_min) * u_GPU / 100
+        v_CASE = p.v_min + (p.v_max - p.v_min) * u_CASE / 100
 
+        L_char = p.V_enclosure ** (1/3)
         h_CPU = self.compute_h(v_CPU)
         h_GPU = self.compute_h(v_GPU)
+        h_CASE = self.compute_h(v_CASE, L_char)
 
         # Bezpośrednie chłodzenie do T_amb
         Q_CPU_to_AMB = h_CPU * p.A_CPU * (T_CPU - p.T_amb)
@@ -42,19 +48,18 @@ class Controller:
             T_amb_K = p.T_amb + 273.15
             Q_rad_CPU = p.epsilon_CPU * p.sigma * p.A_CPU * (T_CPU_K ** 4 - T_amb_K ** 4)
             Q_rad_GPU = p.epsilon_GPU * p.sigma * p.A_GPU * (T_GPU_K ** 4 - T_amb_K ** 4)
-            Q_rad_AIR = p.epsilon_enclosure * p.sigma * p.A_enclosure * (T_AIR_K ** 4 - T_amb_K ** 4)
+            Q_rad_CASE = p.epsilon_enclosure * p.sigma * p.A_enclosure * (T_AIR_K ** 4 - T_amb_K ** 4)
         else:
-            Q_rad_CPU = Q_rad_GPU = Q_rad_AIR = 0
+            Q_rad_CPU = Q_rad_GPU = Q_rad_CASE = 0
 
-        # Równania różniczkowe
         dT_CPU = (Qc - Q_CPU_to_AMB - Q_rad_CPU) / p.C_CPU
         dT_GPU = (Qg - Q_GPU_to_AMB - Q_rad_GPU) / p.C_GPU
 
-        # T_AIR: wycieki ciepła + konwekcja + radiacja do otoczenia
-        Q_leak_to_AIR = p.leak_factor * (Q_CPU_to_AMB + Q_GPU_to_AMB)
-        h_enclosure = 10.0
-        Q_AIR_to_AMB = h_enclosure * p.A_enclosure * (T_AIR - p.T_amb)
-        dT_AIR = (Q_leak_to_AIR - Q_AIR_to_AMB - Q_rad_AIR) / p.C_AIR
+        Q_CPU_to_AIR = h_CPU * p.A_CPU * (T_CPU - T_AIR)
+        Q_GPU_to_AIR = h_GPU * p.A_GPU * (T_GPU - T_AIR)
+
+        Q_air_to_amb = h_CASE * p.A_enclosure * (T_AIR - p.T_amb)
+        dT_AIR = (Q_CPU_to_AIR + Q_GPU_to_AIR - Q_air_to_amb - Q_rad_CASE) / p.C_AIR
 
         return T + np.array([dT_CPU, dT_GPU, dT_AIR]) * p.Ts
 
@@ -78,7 +83,7 @@ class Controller:
 
                     prev = u_prev_val if k == 0 else u_seq[k - 1, 0]
                     cost_total += (
-                            p.w_thermal * max(0, T_sim - T_comfort) ** 3 +
+                            p.w_thermal * max(0, T_sim - T_comfort) ** 2 +
                             p.w_energy * u_k ** 2 +
                             p.w_noise * self.fan_noise_dB([u_k], L_max) ** 2 +
                             p.w_smooth * (u_k - prev) ** 2
@@ -94,11 +99,12 @@ class Controller:
 
         components = [
             (T[0], u_prev[0], Qc, p.A_CPU, p.C_CPU, p.L_max_CPU),
-            (T[1], u_prev[1], Qg, p.A_GPU, p.C_GPU, p.L_max_GPU)
+            (T[1], u_prev[1], Qg, p.A_GPU, p.C_GPU, p.L_max_GPU),
+            (T[2], u_prev[2], 0.0, p.A_enclosure, p.C_AIR, p.L_max_case)
         ]
 
         u_opt = [optimize_component(*params) for params in components]
-        return np.array([u_opt[0], u_opt[1], 0.0])
+        return np.array([u_opt[0], u_opt[1], u_opt[2]])
 
     @staticmethod
     def fan_noise_dB(u_list, L_max, L_base=20.0):

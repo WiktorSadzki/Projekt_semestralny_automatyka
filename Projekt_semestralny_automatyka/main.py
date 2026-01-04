@@ -252,7 +252,7 @@ def main():
         Q_load_GPU_hist = []
 
         for k in range(p.simulation_steps):
-            print(k)
+            # print(k)
 
             # Obciążenie cieplne
             Qc = cpu_load(k, mode)
