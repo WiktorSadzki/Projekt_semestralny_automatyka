@@ -2,5 +2,6 @@
 
 Aby uruchomić projekt:
 
-pip install numpy scipy plotly dash
+pip install numpy scipy plotly dash pandas
+
 
