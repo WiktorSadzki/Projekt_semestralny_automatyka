@@ -8,13 +8,13 @@ def cpu_load(t, mode):
         return 100.0
 
     elif mode == "Stres":
-        return 300.0
+        return 150.0
 
     elif mode == "Stres2":
-        return 500.0
+        return 20.0
 
     elif mode == "Stres3":
-        return 1000.0
+        return 250.0
 
     elif mode == "GRA1":
         return 200.0 + 200.0 * np.sin(0.05 * t)
@@ -35,13 +35,13 @@ def gpu_load(t, mode):
         return 100.0
 
     elif mode == "Stres":
-        return 300.0
+        return 150.0
 
     elif mode == "Stres2":
-        return 500.0
+        return 200.0
 
     elif mode == "Stres3":
-        return 1000.0
+        return 250.0
 
     elif mode == "GRA1":
         return 200.0 + 200.0 * np.sin(0.1 * t)

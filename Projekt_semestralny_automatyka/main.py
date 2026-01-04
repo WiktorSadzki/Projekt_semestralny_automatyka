@@ -251,8 +251,15 @@ def main():
         Q_load_CPU_hist = []
         Q_load_GPU_hist = []
 
-        for k in range(p.simulation_steps):
-            # print(k)
+        bar_width = 30
+        for k in range(p.simulation_steps+1):
+            progress = k / p.simulation_steps
+            filled = int(bar_width * progress)
+
+            print("\r[", end="")
+            print("|" * filled, end="")
+            print(" " * (bar_width - filled), end="")
+            print(f"] {k}/{p.simulation_steps}", end="", flush=True)
 
             # Obciążenie cieplne
             Qc = cpu_load(k, mode)

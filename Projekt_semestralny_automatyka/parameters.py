@@ -4,7 +4,7 @@ class Parameters:
         self.MATERIAL_DATA = {
             "Miedź": {"cp": 385, "rho": 8960, "lambda": 380},     # cp [J/kgK], rho [kg/m³], lambda [W/mK]
             "Aluminium": {"cp": 900, "rho": 2700, "lambda": 235},
-            "Szkło": {"cp": 840, "rho": 2500, "lambda": 1.1},
+            "Szkło": {"cp": 800, "rho": 2500, "lambda": 0.8},
             "PVC": {"cp": 900, "rho": 1400, "lambda": 0.19}
         }
 
@@ -35,7 +35,7 @@ class Parameters:
 
         # Czas symulacji i MPC 
         self.Ts = 1.0                # krok czasowy [s]
-        self.simulation_steps = 200  # liczba kroków symulacji
+        self.simulation_steps = 1000  # liczba kroków symulacji
         self.N = 8                   # horyzont MPC (liczba kroków predykcji)
 
         # Temperatura i PWM 
@@ -46,24 +46,33 @@ class Parameters:
         # Wymiary fizyczne radiatorów i obudowy 
         self.V_rad_CPU = 1.5e-4      # objętość radiatora CPU [m³]
         self.V_rad_GPU = 2.0e-4      # objętość radiatora GPU [m³]
-        self.A_CPU = 0.25             # powierzchnia wymiany ciepła CPU [m²]
-        self.A_GPU = 0.20             # powierzchnia wymiany ciepła GPU [m²]
-        self.V_enclosure = 0.045       # objętość powietrza w obudowie [m³]
-        self.A_enclosure = 0.12        # powierzchnia wymiany ciepła obudowy [m²]
+        self.A_CPU = 0.08             # powierzchnia wymiany ciepła CPU [m²]
+        self.A_GPU = 0.12             # powierzchnia wymiany ciepła GPU [m²]
+        self.A_fan_case = 0.0113        # przekrój wentylatora case 120mm [m²]
+        self.V_enclosure = 0.08       # objętość powietrza w obudowie [m³]
+        self.A_enclosure = 0.1        # powierzchnia wymiany ciepła obudowy [m²]
         self.epsilon_CPU = 0.85       # emisyjność radiatora CPU
         self.epsilon_GPU = 0.85       # emisyjność radiatora GPU
-        self.epsilon_enclosure = 0.6  # emisyjność obudowy
+        self.epsilon_enclosure = 0.7  # emisyjność obudowy
+        self.d_CPU = 0.015  # grubość radiatora CPU [m]
+        self.d_GPU = 0.018  # grubość radiatora GPU [m]
 
-        # Przepływy maksymalne (CFM lub objętość w m³/s) 
-        self.V_flow_max_CPU = 0.05    # maksymalny przepływ powietrza przez radiator CPU
-        self.V_flow_max_GPU = 0.06    # maksymalny przepływ powietrza przez radiator GPU
-        self.V_flow_max_case = 0.06   # maksymalny przepływ powietrza w obudowie
+        # L_char
+        self.L_char_CPU = 0.015  # radiator
+        self.L_char_GPU = 0.018
+        self.L_char_CASE = 0.4  # obudowa
 
-        # Minimalne i maksymalne prędkości wentylatorów [m/s] 
-        self.v_min = 0.2   # wentylator zawsze lekko kręci
-        self.v_max = 7.55  # maksymalna prędkość wentylatora
+        # Przepływy maksymalne (CFM lub objętość w m³/s)
+        self.v_min_CPU = 0.05  # low PWM
+        self.v_max_CPU = 0.46  # 80 CFM
 
-        # Konwekcja naturalna i współczynniki 
+        self.v_min_GPU = 0.05
+        self.v_max_GPU = 0.23  # 59 CFM
+
+        self.v_min_case = 0.05
+        self.v_max_case = 0.23  # 59 CFM
+
+        # Konwekcja naturalna i współczynniki
         self.h_nat = 5.0           # minimalny współczynnik konwekcji naturalnej [W/m²K]
         self.alfa_natural = 1.5    # współczynnik do obliczeń dodatkowych
         self.sigma = 5.67e-8       # stała Stefana-Boltzmanna [W/m²K⁴]
@@ -93,7 +102,7 @@ class Parameters:
         elif mode == "Wysoka wydajność":
             self.T_margin = 12.0
             self.n_margin = 0.5
-            self.w_thermal = 500.0
+            self.w_thermal = 1000.0
             self.w_energy = 0.01
             self.w_noise = 0.01
             self.w_smooth = 0.1
@@ -128,21 +137,29 @@ class Parameters:
         self.Pr_coolant = coolant["Pr"]
 
         if coolant_name == "Powietrze":
-            # Typowe przepływy dla wentylatorów PC 120 mm:
-            # CPU: 50–100 CFM → ~0.024–0.047 m³/s
-            # GPU: 40–80 CFM → ~0.019–0.038 m³/s
-            # Obudowa: 40–80 CFM → ~0.019–0.038 m³/s
-            self.V_flow_max_CPU = 0.037  # ~78 CFM
-            self.V_flow_max_GPU = 0.028  # ~59 CFM
-            self.V_flow_max_case = 0.028  # ~59 CFM
-            v_m = self.V_enclosure  # [m³] efektywna objętość powietrza w obudowie
+            self.v_min_CPU = 0.05
+            self.v_max_CPU = 0.65
+            self.v_min_GPU = 0.05
+            self.v_max_GPU = 0.76
+            self.v_min_case = 0.05
+            self.v_max_case = 1.0
+            self.V_enclosure = 0.036  # [m³] efektywna objętość powietrza w obudowie
         else:
             # Typowy przepływ pomp AIO / custom loop 1–6 L/min → ~0.000017–0.0001 m³/s
-            v_m = 0.003 # [m³] efektywna objętość cieczy w obiegu
-            self.V_flow_max_CPU = 0.00008
-            self.V_flow_max_GPU = 0.00008
-            self.V_flow_max_case = 0.00008
+            self.v_min_CPU = 0.01
+            self.v_max_CPU = 0.1
+            self.v_min_GPU = 0.01
+            self.v_max_GPU = 0.1
+            self.v_min_case = 0.01
+            self.v_max_case = 0.05
+
+            self.V_enclosure = 0.003
+
+        m_enclosure = 5.0  # kg
+        cp_enclosure = 500  # J/(kg·K) - stal
+        C_enclosure = m_enclosure * cp_enclosure
+        C_fluid = self.rho_coolant * self.V_enclosure * self.cp_coolant
 
         # Pojemność cieplna powietrza/cieczy w obudowie
-        self.C_AIR = self.rho_coolant * v_m * self.cp_coolant
+        self.C_AIR = C_fluid + C_enclosure
 
