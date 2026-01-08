@@ -102,7 +102,7 @@ def main():
             dcc.Dropdown(
                 id="mat_ram",
                 options=["Aluminium", "Miedź", "Szkło", "PVC"],
-                value="Miedź",
+                value="Aluminium",
                 clearable=False,
                 className="parameters-dropdown",
             ),
