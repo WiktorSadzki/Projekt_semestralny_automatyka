@@ -35,7 +35,7 @@ class Parameters:
 
         # Czas symulacji i MPC 
         self.Ts = 1.0                # krok czasowy [s]
-        self.simulation_steps = 200  # liczba kroków symulacji
+        self.simulation_steps = 2000  # liczba kroków symulacji
         self.N = 8                   # horyzont MPC (liczba kroków predykcji)
 
         # Temperatura i PWM 
