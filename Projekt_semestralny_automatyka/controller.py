@@ -99,8 +99,10 @@ class Controller:
     def step(self, T, u_prev, Qc, Qg, Qr):
         p = self.p
         N = p.N
-        T_comfort = p.T_amb + (p.T_limit - p.T_amb) * p.n_margin
-        T_comfort_RAM = p.T_amb + (p.T_limit_RAM - p.T_amb)
+        T_comfort_CPU = p.T_amb + (p.T_limit_CPU - p.T_amb) * p.n_margin
+        T_comfort_GPU = p.T_amb + (p.T_limit_GPU - p.T_amb) * p.n_margin
+        T_comfort_RAM = p.T_amb + (p.T_limit_RAM - p.T_amb) * p.n_margin
+        T_comfort_AIR = p.T_amb + (p.T_limit_AIR - p.T_amb) * p.n_margin
 
         def cost(u_flat):
             u_seq = u_flat.reshape((N, 3))
@@ -112,10 +114,10 @@ class Controller:
                 T_sim = self.predict(T_sim, u_k, Qc, Qg, Qr)
 
                 thermal_cost = (
-                        p.w_thermal * max(0, T_sim[0] - T_comfort) ** 2 +
-                        p.w_thermal * max(0, T_sim[1] - T_comfort) ** 2 +
-                        0.5 * p.w_thermal * max(0, T_sim[2] - T_comfort) ** 2 +
-                        0.1 * p.w_thermal * max(0, T_sim[3] - T_comfort_RAM) ** 2
+                        p.w_thermal * max(0, T_sim[0] - T_comfort_CPU) ** 2 +
+                        p.w_thermal * max(0, T_sim[1] - T_comfort_GPU) ** 2 +
+                        0.5 * p.w_thermal * max(0, T_sim[2] - T_comfort_AIR) ** 2 +
+                        0.3 * p.w_thermal * max(0, T_sim[3] - T_comfort_RAM) ** 2
                 )
 
                 prev = u_prev if k == 0 else u_seq[k - 1]

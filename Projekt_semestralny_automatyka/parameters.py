@@ -35,7 +35,7 @@ class Parameters:
 
         # Czas symulacji i MPC 
         self.Ts = 1.0                # krok czasowy [s]
-        self.simulation_steps = 5000  # liczba kroków symulacji
+        self.simulation_steps = 200  # liczba kroków symulacji
         self.N = 8                   # horyzont MPC (liczba kroków predykcji)
 
         # Temperatura i PWM 
@@ -87,7 +87,11 @@ class Parameters:
         self.L_max_GPU = 35.0  # limit hałasu wentylatora GPU [dB]
         self.L_max_case = 32.0 # limit hałasu wentylatora obudowy [dB]
 
-        self.T_limit_RAM = 85.0 # Zadana temperatura limitu pamięci RAM
+        # Limity ciepła
+        self.T_limit_CPU = 75.0  # limit CPU [°C]
+        self.T_limit_GPU = 75.0  # limit GPU [°C]
+        self.T_limit_RAM = 85.0  # limit RAM [°C]
+        self.T_limit_AIR = 70.0  # limit powietrza [°C]
 
         # Radiacja włączona/wyłączona 
         self.enable_radiation = True
