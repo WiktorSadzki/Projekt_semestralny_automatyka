@@ -3,7 +3,7 @@ import plotly.express as px
 from dash import Dash, html, dcc, callback, Output, Input, State
 from parameters import Parameters
 from controller import Controller
-from load_profile import cpu_load, gpu_load
+from load_profile import cpu_load, gpu_load, ram_load
 
 
 def make_graph(x, ys, title, labels, hline=None):
@@ -91,6 +91,16 @@ def main():
             html.Label("Materiał radiatora karty graficznej"),
             dcc.Dropdown(
                 id="mat_gpu",
+                options=["Aluminium", "Miedź", "Szkło", "PVC"],
+                value="Miedź",
+                clearable=False,
+                className="parameters-dropdown",
+            ),
+
+            html.Br(),
+            html.Label("Materiał radiatora pamięci RAM"),
+            dcc.Dropdown(
+                id="mat_ram",
                 options=["Aluminium", "Miedź", "Szkło", "PVC"],
                 value="Miedź",
                 clearable=False,
@@ -204,6 +214,7 @@ def main():
         State("op_mode", "value"),
         State("mat_cpu", "value"),
         State("mat_gpu", "value"),
+        State("mat_ram", "value"),
         State("T_amb", "value"),
         State("N_horizon", "value"),
         State("T_limit", "value"),
@@ -211,7 +222,7 @@ def main():
 
         prevent_initial_call=True
     )
-    def update_output(_, mode, coolant, op_mode, mat_cpu, mat_gpu,
+    def update_output(_, mode, coolant, op_mode, mat_cpu, mat_gpu, mat_ram,
                       T_amb, N_horizon, T_limit, advanced_options):
         # Inicjalizacja parametrów
         p = Parameters()
@@ -223,7 +234,7 @@ def main():
         p.enable_radiation = "radiation" in (advanced_options or [])
 
         # Aktualizacja materiałów radiatorów
-        p.update_heatsink_material(mat_cpu, mat_gpu)
+        p.update_heatsink_material(mat_cpu, mat_gpu, mat_ram)
 
         # Aktualizacja cieczy chłodzącej
         p.update_coolant(coolant)
@@ -235,7 +246,7 @@ def main():
         controller = Controller(p)
 
         # Stan początkowy
-        T = np.array([T_amb, T_amb, T_amb])
+        T = np.array([T_amb, T_amb, T_amb, T_amb])
         u_prev = np.array([0.0, 0.0, 0.0])
 
         # Tablice do zapisu wyników
@@ -243,6 +254,7 @@ def main():
         T_CPU_hist = [T[0]]
         T_GPU_hist = [T[1]]
         T_AIR_hist = [T[2]]
+        T_RAM_hist = [T[3]]
 
         U_CPU_hist = [0.0]
         U_GPU_hist = [0.0]
@@ -250,6 +262,7 @@ def main():
 
         Q_load_CPU_hist = []
         Q_load_GPU_hist = []
+        Q_load_RAM_hist = []
 
         bar_width = 30
         for k in range(p.simulation_steps+1):
@@ -264,19 +277,21 @@ def main():
             # Obciążenie cieplne
             Qc = cpu_load(k, mode)
             Qg = gpu_load(k, mode)
+            Qr = ram_load(k, mode)
 
             # MPC - obliczenie optymalnego sterowania
-            u = controller.step(T, u_prev, Qc, Qg)
+            u = controller.step(T, u_prev, Qc, Qg, Qr)
             u = np.clip(u, 0.0, p.U_max)
 
             # Predykcja nowego stanu
-            T = controller.predict(T, u, Qc, Qg)
+            T = controller.predict(T, u, Qc, Qg, Qr)
 
             # Zapis
             time.append(time[-1] + p.Ts)
             T_CPU_hist.append(T[0])
             T_GPU_hist.append(T[1])
             T_AIR_hist.append(T[2])
+            T_RAM_hist.append(T[3])
 
             U_CPU_hist.append(u[0])
             U_GPU_hist.append(u[1])
@@ -284,12 +299,14 @@ def main():
 
             Q_load_CPU_hist.append(Qc)
             Q_load_GPU_hist.append(Qg)
+            Q_load_RAM_hist.append(Qr)
 
             u_prev = u
 
         # Uchyb regulacji
         CPU_error = [T_limit - t for t in T_CPU_hist]
         GPU_error = [T_limit - t for t in T_GPU_hist]
+        RAM_error = [p.T_limit_RAM - t for t in T_RAM_hist]
         AIR_error = [T_limit - t for t in T_AIR_hist]
 
         # Hałas [dB]
@@ -316,6 +333,7 @@ def main():
             {
                 "Procesor": T_CPU_hist,
                 "Karta graficzna": T_GPU_hist,
+                "Pamięć RAM": T_RAM_hist,
                 "Wnętrze obudowy": T_AIR_hist
             },
             f"Temperatury systemu" + title_suffix,
@@ -340,6 +358,7 @@ def main():
             {
                 "Procesor": CPU_error,
                 "Karta graficzna": GPU_error,
+                "Pamięć RAM": RAM_error,
                 "Wnętrze obudowy": AIR_error
             },
             f"Uchyb regulacji (zapas do limitu)" + title_suffix,
@@ -376,6 +395,7 @@ def main():
             {
                 "Obciążenie procesora": Q_load_CPU_hist,
                 "Obciążenie karty graficznej": Q_load_GPU_hist,
+                "Obciążenie pamięci RAM": Q_load_RAM_hist,
             },
             f"Obciążenie cieplne" + title_suffix,
             {"x": "Czas [s]", "y": "Moc [W]"}

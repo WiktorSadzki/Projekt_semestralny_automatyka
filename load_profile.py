@@ -53,3 +53,16 @@ def gpu_load(t, mode):
         return 500.0 if t < 150 else 50.0
 
     return 100.0
+
+def ram_load(t, mode):
+    if mode == "Bezczynny":
+        return 5.0
+    elif mode == "Stres":
+        return 15.0
+    elif mode == "GRA1":
+        return 10.0 + 3.0 * np.sin(0.15 * t)
+    elif mode == "GRA2":
+        return 12.0 + 4.0 * np.sin(0.25 * t)
+    elif mode == "GRA3":
+        return 8.0 + 2.0 * np.sin(0.1 * t) if t < 150 else 15.0 + 3.0 * np.sin(0.1 * t)
+    return 8.0

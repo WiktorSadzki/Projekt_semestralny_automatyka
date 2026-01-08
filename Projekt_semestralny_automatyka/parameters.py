@@ -2,10 +2,10 @@ class Parameters:
     def __init__(self):
         # Materiały radiatorów 
         self.MATERIAL_DATA = {
-            "Miedź": {"cp": 385, "rho": 8960, "lambda": 380},     # cp [J/kgK], rho [kg/m³], lambda [W/mK]
-            "Aluminium": {"cp": 900, "rho": 2700, "lambda": 235},
-            "Szkło": {"cp": 800, "rho": 2500, "lambda": 0.8},
-            "PVC": {"cp": 900, "rho": 1400, "lambda": 0.19}
+            "Miedź": {"cp": 385, "rho": 8960, "lambda": 380, "epsilon": 0.78},     # cp [J/kgK], rho [kg/m³], lambda [W/mK]
+            "Aluminium": {"cp": 900, "rho": 2700, "lambda": 235, "epsilon": 0.85},
+            "Szkło": {"cp": 800, "rho": 2500, "lambda": 0.8, "epsilon": 0.90},
+            "PVC": {"cp": 900, "rho": 1400, "lambda": 0.19, "epsilon": 0.92}
         }
 
         # Ciecz / powietrze chłodzące 
@@ -35,7 +35,7 @@ class Parameters:
 
         # Czas symulacji i MPC 
         self.Ts = 1.0                # krok czasowy [s]
-        self.simulation_steps = 1000  # liczba kroków symulacji
+        self.simulation_steps = 5000  # liczba kroków symulacji
         self.N = 8                   # horyzont MPC (liczba kroków predykcji)
 
         # Temperatura i PWM 
@@ -46,21 +46,26 @@ class Parameters:
         # Wymiary fizyczne radiatorów i obudowy 
         self.V_rad_CPU = 1.5e-4      # objętość radiatora CPU [m³]
         self.V_rad_GPU = 2.0e-4      # objętość radiatora GPU [m³]
+        self.V_rad_RAM = 5.0e-5  # objętość radiatora RAM [m³]
         self.A_CPU = 0.08             # powierzchnia wymiany ciepła CPU [m²]
         self.A_GPU = 0.12             # powierzchnia wymiany ciepła GPU [m²]
+        self.A_RAM = 0.02  # powierzchnia wymiany RAM [m²]
         self.A_fan_case = 0.0113        # przekrój wentylatora case 120mm [m²]
         self.V_enclosure = 0.08       # objętość powietrza w obudowie [m³]
         self.A_enclosure = 0.1        # powierzchnia wymiany ciepła obudowy [m²]
         self.epsilon_CPU = 0.85       # emisyjność radiatora CPU
         self.epsilon_GPU = 0.85       # emisyjność radiatora GPU
         self.epsilon_enclosure = 0.7  # emisyjność obudowy
+        self.epsilon_RAM = 0.85  # emisyjność radiatora RAM
         self.d_CPU = 0.015  # grubość radiatora CPU [m]
         self.d_GPU = 0.018  # grubość radiatora GPU [m]
+        self.d_RAM = 0.005  # grubość radiatora RAM [m]
 
         # L_char
         self.L_char_CPU = 0.015  # radiator
         self.L_char_GPU = 0.018
         self.L_char_CASE = 0.4  # obudowa
+        self.L_char_RAM = 0.01
 
         # Przepływy maksymalne (CFM lub objętość w m³/s)
         self.v_min_CPU = 0.05  # low PWM
@@ -82,11 +87,13 @@ class Parameters:
         self.L_max_GPU = 35.0  # limit hałasu wentylatora GPU [dB]
         self.L_max_case = 32.0 # limit hałasu wentylatora obudowy [dB]
 
+        self.T_limit_RAM = 85.0 # Zadana temperatura limitu pamięci RAM
+
         # Radiacja włączona/wyłączona 
         self.enable_radiation = True
 
         # Inicjalizacja materiałów radiatorów i cieczy 
-        self.update_heatsink_material("Miedź", "Miedź")
+        self.update_heatsink_material("Miedź", "Miedź", "Aluminium")
         self.update_coolant("Powietrze")
         self.set_operation_mode("Standard")
 
@@ -115,17 +122,25 @@ class Parameters:
             self.w_smooth = 10.0
 
     # Aktualizacja materiałów radiatorów 
-    def update_heatsink_material(self, cpu_material: str, gpu_material: str):
+    def update_heatsink_material(self, cpu_material: str, gpu_material: str, ram_material: str = "Aluminium"):
         m_cpu = self.MATERIAL_DATA[cpu_material]
         m_gpu = self.MATERIAL_DATA[gpu_material]
+        m_ram = self.MATERIAL_DATA[ram_material]
 
         # Pojemność cieplna radiatorów: C = V * rho * cp [J/K]
         self.C_CPU = self.V_rad_CPU * m_cpu["rho"] * m_cpu["cp"]
         self.C_GPU = self.V_rad_GPU * m_gpu["rho"] * m_gpu["cp"]
+        self.C_RAM = self.V_rad_RAM * m_ram["rho"] * m_ram["cp"]
 
         # Przewodnictwo cieplne radiatorów
         self.lambda_CPU = m_cpu["lambda"]
         self.lambda_GPU = m_gpu["lambda"]
+        self.lambda_RAM = m_ram["lambda"]
+
+        # Emisyjność
+        self.epsilon_CPU = m_cpu["epsilon"]
+        self.epsilon_GPU = m_gpu["epsilon"]
+        self.epsilon_RAM = m_ram["epsilon"]
 
     # Aktualizacja właściwości cieczy / powietrza chłodzącego 
     def update_coolant(self, coolant_name: str):
@@ -137,21 +152,21 @@ class Parameters:
         self.Pr_coolant = coolant["Pr"]
 
         if coolant_name == "Powietrze":
-            self.v_min_CPU = 0.05
-            self.v_max_CPU = 0.65
-            self.v_min_GPU = 0.05
-            self.v_max_GPU = 0.76
-            self.v_min_case = 0.05
-            self.v_max_case = 1.0
-            self.V_enclosure = 0.036  # [m³] efektywna objętość powietrza w obudowie
+            self.v_min_CPU = 0.01
+            self.v_max_CPU = 0.048
+            self.v_min_GPU = 0.01
+            self.v_max_GPU = 0.048
+            self.v_min_case = 0.01
+            self.v_max_case = 0.096
+            self.V_enclosure = 0.08  # [m³] efektywna objętość powietrza w obudowie
         else:
             # Typowy przepływ pomp AIO / custom loop 1–6 L/min → ~0.000017–0.0001 m³/s
-            self.v_min_CPU = 0.01
-            self.v_max_CPU = 0.1
-            self.v_min_GPU = 0.01
-            self.v_max_GPU = 0.1
-            self.v_min_case = 0.01
-            self.v_max_case = 0.05
+            self.v_min_CPU = 0.00002
+            self.v_max_CPU = 0.0001
+            self.v_min_GPU = 0.00002
+            self.v_max_GPU = 0.0001
+            self.v_min_case = 0.00002
+            self.v_max_case = 0.0001
 
             self.V_enclosure = 0.003
 
